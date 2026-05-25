@@ -1,0 +1,358 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="${WEB_SPECTROMETER_APP_DIR:-/opt/web-spectrometer}"
+CONFIG_DIR="${WEB_SPECTROMETER_CONFIG_DIR:-/etc/web-spectrometer}"
+CONFIG_PATH="${WEB_SPECTROMETER_CONFIG_PATH:-$CONFIG_DIR/config.json}"
+STATE_DIR="${WEB_SPECTROMETER_STATE_DIR:-/etc/web-spectrometer}"
+DEVICE_ID_FILE="${WEB_SPECTROMETER_DEVICE_ID_FILE:-$STATE_DIR/device-id}"
+COMPLETE_FILE="${WEB_SPECTROMETER_COMPLETE_FILE:-$STATE_DIR/firstboot-complete}"
+HOSTNAME_FILE="${WEB_SPECTROMETER_HOSTNAME_FILE:-/etc/hostname}"
+HOSTS_FILE="${WEB_SPECTROMETER_HOSTS_FILE:-/etc/hosts}"
+DEFAULT_HOSTNAME="${WEB_SPECTROMETER_DEFAULT_HOSTNAME:-raspberrypi}"
+SERVICE_NAME="${WEB_SPECTROMETER_SERVICE_NAME:-web-spectrometer.service}"
+FIRSTBOOT_SERVICE_NAME="${WEB_SPECTROMETER_FIRSTBOOT_SERVICE_NAME:-web-spectrometer-firstboot.service}"
+SYSTEMCTL="${WEB_SPECTROMETER_SYSTEMCTL:-systemctl}"
+
+log() {
+  printf '[web-spectrometer-firstboot] %s\n' "$*"
+}
+
+boot_dir() {
+  if [ -n "${WEB_SPECTROMETER_BOOT_DIR:-}" ]; then
+    printf '%s\n' "$WEB_SPECTROMETER_BOOT_DIR"
+  elif [ -d /boot/firmware ]; then
+    printf '%s\n' /boot/firmware
+  else
+    printf '%s\n' /boot
+  fi
+}
+
+valid_mac() {
+  case "$1" in
+    ""|"00:00:00:00:00:00"|"ff:ff:ff:ff:ff:ff")
+      return 1
+      ;;
+  esac
+}
+
+primary_mac() {
+  local iface path mac
+  for iface in wlan0 eth0; do
+    path="/sys/class/net/$iface/address"
+    if [ -r "$path" ]; then
+      mac="$(tr '[:upper:]' '[:lower:]' < "$path")"
+      if valid_mac "$mac"; then
+        printf '%s\n' "$mac"
+        return 0
+      fi
+    fi
+  done
+
+  for path in /sys/class/net/*/address; do
+    iface="$(basename "$(dirname "$path")")"
+    [ "$iface" = "lo" ] && continue
+    mac="$(tr '[:upper:]' '[:lower:]' < "$path")"
+    if valid_mac "$mac"; then
+      printf '%s\n' "$mac"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+random_hex_id() {
+  od -An -N4 -tx1 /dev/urandom | tr -d ' \n' | cut -c1-6
+}
+
+derive_device_id() {
+  local mac
+  if [ -s "$DEVICE_ID_FILE" ]; then
+    tr -dc 'a-f0-9' < "$DEVICE_ID_FILE" | cut -c1-8
+    return 0
+  fi
+
+  mac="$(primary_mac || true)"
+  if [ -n "$mac" ]; then
+    printf 'web-spectrometer:%s' "$mac" | sha256sum | awk '{print substr($1, 1, 6)}'
+    return 0
+  fi
+
+  random_hex_id
+}
+
+generate_token() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import secrets; print(secrets.token_urlsafe(9))'
+    return 0
+  fi
+  random_hex_id
+}
+
+read_token() {
+  python3 - "$CONFIG_PATH" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+service = data.get("service", data)
+print(service.get("access_token", ""))
+PY
+}
+
+write_config_fallback() {
+  local token="$1"
+  local pairing_required="${2:-0}"
+  python3 - "$CONFIG_PATH" "$token" "$pairing_required" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+token = sys.argv[2]
+pairing_required = sys.argv[3].lower() in {"1", "true", "yes"}
+data = {
+    "service": {
+        "host": "0.0.0.0",
+        "port": 8765,
+        "access_token": token,
+        "pairing_required": pairing_required,
+        "camera_backend": "auto",
+        "cors_origins": ["*"],
+    },
+    "settings": {
+        "frame_width": 800,
+        "frame_height": 600,
+        "output_width": 800,
+        "row_center_y": 300,
+        "half_height": 1,
+        "angle_degrees": 0,
+        "reverse_x": False,
+        "gain": 1.0,
+        "frame_duration_us": 40000,
+    },
+}
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+PY
+}
+
+read_hostname() {
+  if [ -f "$HOSTNAME_FILE" ]; then
+    tr -d ' \t\r\n' < "$HOSTNAME_FILE"
+  fi
+  return 0
+}
+
+should_use_generated_hostname() {
+  local current="$1"
+
+  if [ "${WEB_SPECTROMETER_FORCE_GENERATED_HOSTNAME:-0}" = "1" ]; then
+    return 0
+  fi
+  if [ "${WEB_SPECTROMETER_RESPECT_CUSTOM_HOSTNAME:-1}" = "0" ]; then
+    return 0
+  fi
+
+  case "$current" in
+    ""|"$DEFAULT_HOSTNAME"|"raspberrypi"|"web-spectrometer-pi-os"|"web-spectrometer-pi-os-lite"|"spectrometer")
+      return 0
+      ;;
+    spectrometer-[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9])
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+ensure_config() {
+  local token
+  local pairing_required="${WEB_SPECTROMETER_PAIRING_REQUIRED:-1}"
+  install -d -m 0750 "$CONFIG_DIR"
+  if [ -s "$CONFIG_PATH" ]; then
+    return 0
+  fi
+
+  token="${WEB_SPECTROMETER_INITIAL_ACCESS_TOKEN:-}"
+  if [ -n "$token" ]; then
+    pairing_required=0
+  elif [ "$pairing_required" != "1" ]; then
+    token="$(generate_token)"
+    pairing_required=0
+  fi
+
+  if [ -x "$APP_DIR/.venv/bin/python" ] && [ -f "$APP_DIR/deploy/write_config.py" ]; then
+    "$APP_DIR/.venv/bin/python" "$APP_DIR/deploy/write_config.py" "$CONFIG_PATH" "$token" "$pairing_required"
+  else
+    write_config_fallback "$token" "$pairing_required"
+  fi
+  chmod 0600 "$CONFIG_PATH"
+}
+
+set_hostname_files() {
+  local hostname="$1"
+  local current=""
+  local changed=0
+
+  if [ -f "$HOSTNAME_FILE" ]; then
+    current="$(tr -d ' \t\r\n' < "$HOSTNAME_FILE")"
+  fi
+  if [ "$current" != "$hostname" ]; then
+    printf '%s\n' "$hostname" > "$HOSTNAME_FILE"
+    changed=1
+  fi
+
+  touch "$HOSTS_FILE"
+  if grep -q '^127\.0\.1\.1[[:space:]]' "$HOSTS_FILE"; then
+    sed -i "s/^127\\.0\\.1\\.1[[:space:]].*/127.0.1.1\t$hostname/" "$HOSTS_FILE"
+  else
+    printf '127.0.1.1\t%s\n' "$hostname" >> "$HOSTS_FILE"
+  fi
+
+  if command -v hostnamectl >/dev/null 2>&1; then
+    hostnamectl set-hostname "$hostname" || true
+  else
+    hostname "$hostname" || true
+  fi
+
+  return "$changed"
+}
+
+disable_camera_led() {
+  [ "${WEB_SPECTROMETER_DISABLE_CAMERA_LED:-1}" = "1" ] || return 0
+  local config_txt
+  local changed=0
+  config_txt="$(boot_dir)/config.txt"
+  touch "$config_txt"
+  if ! grep -Eq '^# Web Spectrometer camera LED setting v2$' "$config_txt"; then
+    {
+      printf '\n'
+      printf '[all]\n'
+      printf '# Web Spectrometer camera LED setting v2\n'
+      printf 'disable_camera_led=1\n'
+    } >> "$config_txt"
+    changed=1
+  fi
+  return "$changed"
+}
+
+write_setup_file() {
+  local hostname="$1"
+  local device_id="$2"
+  local token="$3"
+  local setup_file
+  local ip_address=""
+
+  setup_file="$(boot_dir)/spectrometer-setup.txt"
+  ip_address="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+
+  if [ -n "$token" ]; then
+    cat > "$setup_file" <<EOF
+Web Spectrometer setup
+======================
+
+Friendly name: Spectrometer ${device_id^^}
+Device ID: ${device_id}
+Hostname: ${hostname}
+API URL: http://${hostname}.local:8765/
+Access code: ${token}
+
+If the .local address does not resolve on your computer, find the Pi IP address
+from your router or with a network scanner and open:
+
+http://<pi-ip-address>:8765/
+
+Detected IP at setup time: ${ip_address:-unknown}
+EOF
+  else
+    cat > "$setup_file" <<EOF
+Web Spectrometer setup
+======================
+
+Friendly name: Spectrometer ${device_id^^}
+Device ID: ${device_id}
+Hostname: ${hostname}
+API URL: http://${hostname}.local:8765/
+Access code: set during first API pairing
+
+Use a compatible UI or API client from a computer on the same Wi-Fi network.
+The first pairing request will set the access code for this spectrometer.
+
+If the .local address does not resolve on your computer, find the Pi IP address
+from your router or with a network scanner and open:
+
+http://<pi-ip-address>:8765/
+
+Detected IP at setup time: ${ip_address:-unknown}
+EOF
+  fi
+}
+
+main() {
+  install -d -m 0755 "$STATE_DIR"
+
+  local device_id
+  local hostname
+  local current_hostname
+  local generated_hostname
+  local token
+  local hostname_changed=0
+  local boot_config_changed=0
+
+  device_id="$(derive_device_id)"
+  if [ -z "$device_id" ]; then
+    device_id="$(random_hex_id)"
+  fi
+  printf '%s\n' "$device_id" > "$DEVICE_ID_FILE"
+  generated_hostname="spectrometer-$device_id"
+  current_hostname="$(read_hostname)"
+  if should_use_generated_hostname "$current_hostname"; then
+    hostname="$generated_hostname"
+  else
+    hostname="$current_hostname"
+  fi
+
+  ensure_config
+  token="$(read_token)"
+  set_hostname_files "$hostname" || hostname_changed=1
+  disable_camera_led || boot_config_changed=1
+  write_setup_file "$hostname" "$device_id" "$token"
+  date -u '+%Y-%m-%dT%H:%M:%SZ' > "$COMPLETE_FILE"
+
+  if command -v "$SYSTEMCTL" >/dev/null 2>&1; then
+    "$SYSTEMCTL" enable "$SERVICE_NAME" || true
+    "$SYSTEMCTL" disable "$FIRSTBOOT_SERVICE_NAME" || true
+  fi
+
+  log "device id: $device_id"
+  log "url: http://$hostname.local:8765/"
+  log "setup file: $(boot_dir)/spectrometer-setup.txt"
+
+  if [ "$hostname_changed" = "1" ] || [ "$boot_config_changed" = "1" ]; then
+    if [ "$hostname_changed" = "1" ]; then
+      log "hostname changed; rebooting once"
+    fi
+    if [ "$boot_config_changed" = "1" ]; then
+      log "camera LED boot setting changed; rebooting once"
+    fi
+    if command -v "$SYSTEMCTL" >/dev/null 2>&1; then
+      "$SYSTEMCTL" reboot
+    else
+      reboot
+    fi
+    return 0
+  fi
+
+  # The camera service is enabled and ordered after this unit. Starting or
+  # restarting it synchronously here can deadlock because systemd waits for
+  # firstboot to exit before it is allowed to start the service. Queueing the
+  # start without waiting lets the service come up on the same boot.
+  if command -v "$SYSTEMCTL" >/dev/null 2>&1; then
+    "$SYSTEMCTL" start --no-block "$SERVICE_NAME" || true
+  fi
+}
+
+main "$@"

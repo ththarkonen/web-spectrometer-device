@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Web Spectrometer">
+  <rect width="40" height="40" rx="8" fill="#16161d"/>
+  <path d="M8 28h24" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".78"/>
+  <path d="M10 25 18 9l5 10 3-6 4 12" fill="none" stroke="#D33479" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <rect x="10" y="28" width="3" height="5" fill="#D33479"/>
+  <rect x="17" y="28" width="3" height="5" fill="#4cc9f0"/>
+  <rect x="24" y="28" width="3" height="5" fill="#ffd166"/>
+  <rect x="31" y="28" width="3" height="5" fill="#73d13d"/>
+</svg>

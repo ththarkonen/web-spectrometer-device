@@ -1,0 +1,13 @@
+[Unit]
+Description=Provision Web Spectrometer identity and setup file
+Wants=cloud-config.service cloud-final.service
+After=local-fs.target cloud-config.service cloud-final.service
+Before=web-spectrometer.service
+ConditionPathExists=!/etc/web-spectrometer/firstboot-complete
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/web-spectrometer-firstboot
+
+[Install]
+WantedBy=multi-user.target

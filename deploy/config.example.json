@@ -1,0 +1,21 @@
+{
+  "service": {
+    "host": "0.0.0.0",
+    "port": 8765,
+    "access_token": "replace-this-token",
+    "pairing_required": false,
+    "camera_backend": "auto",
+    "cors_origins": ["*"]
+  },
+  "settings": {
+    "frame_width": 800,
+    "frame_height": 600,
+    "output_width": 800,
+    "row_center_y": 300,
+    "half_height": 1,
+    "angle_degrees": 0,
+    "reverse_x": false,
+    "gain": 1.0,
+    "frame_duration_us": 40000
+  }
+}

@@ -1,0 +1,25 @@
+[project]
+name = "web-spectrometer-device"
+version = "1.0.0"
+description = "Raspberry Pi spectrometer camera API service and custom OS tooling."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+pi = [
+  "fastapi>=0.111",
+  "uvicorn>=0.30",
+  "websockets>=12",
+]
+
+[project.scripts]
+spectrometer-pi = "pi.camera_service:main"
+
+[tool.setuptools]
+packages = ["spectrometer_core", "pi"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
