@@ -12,20 +12,26 @@ Requirements:
 - Raspberry Pi Imager on the computer used to flash the card.
 - Wi-Fi credentials for the network the computer and Pi will share.
 
+The release manifest installation flow has been tested with Raspberry Pi Imager 2.0.7.
+
+Manifest entry methods:
+
+- URL method: choose **App Options** -> **Content Repository** -> **Use custom URL**, then paste the release manifest URL.
+- File method: download `web-spectrometer-pi-os-<version>.rpi-imager-manifest` from the GitHub release, then open it by double-clicking the file or choosing **App Options** -> **Content Repository** -> **Use custom file**.
+
 Install:
 
-1. Download the latest `web-spectrometer-pi-os-<version>.rpi-imager-manifest` from the GitHub release.
-2. Open Raspberry Pi Imager.
-3. Open the downloaded `.rpi-imager-manifest`. You can double-click it, or in Imager choose **App Options** -> **Content Repository** -> **Use custom file**.
-4. Select the Web Spectrometer OS entry from **Choose OS**.
-5. Select the microSD card.
-6. Open OS customisation and set Wi-Fi credentials.
-7. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a user account.
-8. Flash the card.
-9. Insert the card into the Pi and power it on.
-10. Wait for first boot to finish. The Pi may reboot once if it generated a unique hostname.
-11. Connect to the API from a compatible UI or client. The hostname becomes the API URL name, so hostname `lab-spectrometer` is `http://lab-spectrometer.local:8765/`.
-12. Pair the device through the UI or by calling `POST /pairing` to choose the access code for this spectrometer.
+1. Open Raspberry Pi Imager.
+2. Add the Web Spectrometer manifest using one of the manifest entry methods.
+3. Select the Web Spectrometer OS entry from **Choose OS**.
+4. Select the microSD card.
+5. Open OS customisation and set Wi-Fi credentials.
+6. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a user account.
+7. Flash the card.
+8. Insert the card into the Pi and power it on.
+9. Wait for first boot to finish. The Pi may reboot once if it generated a unique hostname.
+10. Connect to the API from a compatible UI or client. The hostname becomes the API URL name, so hostname `lab-spectrometer` is `http://lab-spectrometer.local:8765/`.
+11. Pair the device through the UI or by calling `POST /pairing` to choose the access code for this spectrometer.
 
 The public manifest points Raspberry Pi Imager at the release image URL. Manual download of the `.img.xz` file is not required for the manifest-based flow. The `.img.xz` file remains attached to the GitHub release because Imager downloads it from the URL stored in the manifest.
 

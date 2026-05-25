@@ -8,16 +8,22 @@ Attach the generated image and checksum to the GitHub release:
 
 ## Install
 
+The release manifest installation flow has been tested with Raspberry Pi Imager 2.0.7.
+
+Manifest entry methods:
+
+- URL method: choose **App Options** -> **Content Repository** -> **Use custom URL**, then paste this manifest URL.
+- File method: download the `.rpi-imager-manifest` file, then open it by double-clicking the file or choosing **App Options** -> **Content Repository** -> **Use custom file**.
+
 1. Install Raspberry Pi Imager.
-2. Download the `.rpi-imager-manifest` file.
-3. Open the `.rpi-imager-manifest` with Raspberry Pi Imager.
-4. Select the Web Spectrometer OS entry and the SD card.
-5. Open OS customisation and set Wi-Fi credentials for the network the computer will also use.
-6. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a login account.
-7. Flash the image.
-8. Boot the Pi and wait for the first-boot reboot to finish.
-9. Connect a compatible UI or API client to `http://<hostname>.local:8765/`, for example `http://lab-spectrometer.local:8765/`.
-10. Choose the access code during first API pairing.
+2. Add the Web Spectrometer manifest using one of the manifest entry methods.
+3. Select the Web Spectrometer OS entry and the SD card.
+4. Open OS customisation and set Wi-Fi credentials for the network the computer will also use.
+5. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a login account.
+6. Flash the image.
+7. Boot the Pi and wait for the first-boot reboot to finish.
+8. Connect a compatible UI or API client to `http://<hostname>.local:8765/`, for example `http://lab-spectrometer.local:8765/`.
+9. Choose the access code during first API pairing.
 
 The `.img.xz` file does not need to be downloaded manually when using the public manifest. Raspberry Pi Imager downloads the image from the URL stored in the manifest.
 
