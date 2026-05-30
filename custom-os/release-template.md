@@ -21,7 +21,7 @@ Manifest entry methods:
 4. Open OS customisation and set Wi-Fi credentials for the network the computer will also use.
 5. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a login account.
 6. Flash the image.
-7. Boot the Pi and wait for the first-boot reboot to finish.
+7. Boot the Pi and wait for first boot to finish. The Pi may reboot once after applying the camera LED boot setting.
 8. Connect a compatible UI or API client to `http://<hostname>.local:8765/`, for example `http://lab-spectrometer.local:8765/`.
 9. Choose the access code during first API pairing.
 
@@ -35,13 +35,7 @@ If you set a hostname in Imager, the URL has the form:
 http://<hostname>.local:8765/
 ```
 
-If you leave the hostname at the Raspberry Pi OS default, first boot generates a unique hostname:
-
-```text
-http://spectrometer-<device-id>.local:8765/
-```
-
-The generated hostname is written to `spectrometer-setup.txt` on the SD card boot partition. If SSH was enabled in Imager, the same file is available at `/boot/firmware/spectrometer-setup.txt` on the Pi.
+First boot does not replace the hostname configured by Raspberry Pi Imager. The configured hostname is written to `spectrometer-setup.txt` on the SD card boot partition. If SSH was enabled in Imager, the same file is available at `/boot/firmware/spectrometer-setup.txt` on the Pi.
 
 If `.local` does not resolve, use the Pi IP address:
 

@@ -29,7 +29,7 @@ Install:
 6. Recommended: set a hostname such as `lab-spectrometer`. Optional: enable SSH and set a user account.
 7. Flash the card.
 8. Insert the card into the Pi and power it on.
-9. Wait for first boot to finish. The Pi may reboot once if it generated a unique hostname.
+9. Wait for first boot to finish. The Pi may reboot once after applying the camera LED boot setting.
 10. Connect to the API from a compatible UI or client. The hostname becomes the API URL name, so hostname `lab-spectrometer` is `http://lab-spectrometer.local:8765/`.
 11. Pair the device through the UI or by calling `POST /pairing` to choose the access code for this spectrometer.
 
@@ -42,12 +42,12 @@ The setup file contains:
 ```text
 Friendly name: Spectrometer <ID>
 Device ID: <id>
-Hostname: spectrometer-<id>
-URL: http://spectrometer-<id>.local:8765/
+Hostname: <hostname>
+URL: http://<hostname>.local:8765/
 Access code: set during first API pairing
 ```
 
-The setup file is mainly a fallback for finding the generated URL. If you enabled SSH, you can read it at `/boot/firmware/spectrometer-setup.txt` on the Pi. It is also written to the SD card boot partition.
+The setup file is mainly a fallback for confirming the configured URL. If you enabled SSH, you can read it at `/boot/firmware/spectrometer-setup.txt` on the Pi. It is also written to the SD card boot partition.
 
 If the `.local` URL does not resolve, find the Pi IP address from your router and use:
 
@@ -57,7 +57,7 @@ http://<pi-ip-address>:8765/
 
 A compatible UI or API client can set a friendly name and choose the first access code. The friendly name is separate from the network hostname.
 
-If you set a hostname in Imager, the setup file uses that hostname. If you leave the hostname at the Raspberry Pi OS default, first boot changes it to `spectrometer-<id>` to avoid collisions when multiple spectrometers are on the same network.
+The setup file uses the hostname configured by Raspberry Pi Imager. First boot does not replace it with a generated hostname.
 
 Setting a login password or enabling SSH in Imager does not affect the spectrometer service. The service and its Python libraries are already installed in the image and run independently of the login user.
 
@@ -65,11 +65,11 @@ Setting a login password or enabling SSH in Imager does not affect the spectrome
 
 Each custom-image Pi generates a short device ID from a hash of its MAC address and persists it. The raw MAC address is not shown.
 
-Multiple devices on the same Wi-Fi get different hostnames:
+Multiple devices on the same Wi-Fi should be given different hostnames in Raspberry Pi Imager:
 
 ```text
-http://spectrometer-8f3a91c.local:8765/
-http://spectrometer-91f0aa.local:8765/
+http://lab-spectrometer-1.local:8765/
+http://lab-spectrometer-2.local:8765/
 ```
 
 Client applications can save and switch between devices. A typical UI profile stores:

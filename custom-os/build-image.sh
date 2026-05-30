@@ -57,6 +57,89 @@ run_with_optional_sudo() {
   run_with_sudo_env "$@"
 }
 
+patch_pi_gen_docker_binfmt() {
+  local build_docker="$1"
+
+  python3 - "$build_docker" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+original = text
+
+text = text.replace(
+"""  if ! qemu_arm=$(which qemu-arm) ; then
+    echo "qemu-arm not found (please install qemu-user-binfmt)"
+    exit 1
+  fi
+  if [ ! -f /proc/sys/fs/binfmt_misc/register ]; then
+""",
+"""  if ! qemu_arm=$(which qemu-arm) ; then
+    echo "qemu-arm not found on host; relying on privileged pi-gen container binfmt setup"
+    qemu_arm=""
+  fi
+  if [ -n "${qemu_arm}" ] && [ ! -f /proc/sys/fs/binfmt_misc/register ]; then
+""",
+)
+
+text = text.replace(
+"""  if ! grep -q "^interpreter ${qemu_arm}" /proc/sys/fs/binfmt_misc/qemu-arm* ; then
+""",
+"""  if [ -n "${qemu_arm}" ] && ! grep -q "^interpreter ${qemu_arm}" /proc/sys/fs/binfmt_misc/qemu-arm* ; then
+""",
+)
+
+old_registration = """    dpkg-reconfigure qemu-user-binfmt &&
+    # binfmt_misc is sometimes not mounted with debian trixie image
+    (mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc || true) &&
+"""
+new_registration = """    # binfmt_misc is sometimes not mounted with Debian trixie image.
+    (mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc || true) &&
+    if [ -x /usr/lib/systemd/systemd-binfmt ]; then
+      /usr/lib/systemd/systemd-binfmt
+    else
+      dpkg-reconfigure qemu-user-binfmt
+    fi &&
+"""
+
+if old_registration in text:
+    text = text.replace(old_registration, new_registration)
+elif "/usr/lib/systemd/systemd-binfmt" not in text:
+    raise SystemExit(f"could not patch binfmt registration in {path}")
+
+if text != original:
+    path.write_text(text)
+PY
+}
+
+patch_pi_gen_bootstrap_signature() {
+  local common_script="$1"
+
+  python3 - "$common_script" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+original = text
+
+needle = """\tBOOTSTRAP_ARGS+=(--keyring "${STAGE_DIR}/files/raspberrypi.gpg")\n"""
+replacement = needle + """\tif [ "${BOOTSTRAP_NO_CHECK_SIG:-0}" = "1" ]; then
+\t\tBOOTSTRAP_ARGS+=(--no-check-sig)
+\tfi
+"""
+
+if "BOOTSTRAP_NO_CHECK_SIG" not in text:
+    if needle not in text:
+        raise SystemExit(f"could not patch bootstrap signature handling in {path}")
+    text = text.replace(needle, replacement, 1)
+
+if text != original:
+    path.write_text(text)
+PY
+}
+
 require_command git
 require_command rsync
 require_command python3
@@ -80,6 +163,8 @@ fi
 
 case "$BUILD_BACKEND" in
   docker)
+    patch_pi_gen_docker_binfmt "$PI_GEN_DIR/build-docker.sh"
+    patch_pi_gen_bootstrap_signature "$PI_GEN_DIR/scripts/common"
     (
       cd "$PI_GEN_DIR"
       if [ "$PIGEN_CLEAN_WORK" = "1" ]; then
@@ -90,6 +175,7 @@ case "$BUILD_BACKEND" in
     )
     ;;
   native)
+    patch_pi_gen_bootstrap_signature "$PI_GEN_DIR/scripts/common"
     (
       cd "$PI_GEN_DIR"
       run_with_optional_sudo ./build.sh

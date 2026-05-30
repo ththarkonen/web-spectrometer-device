@@ -9,7 +9,6 @@ DEVICE_ID_FILE="${WEB_SPECTROMETER_DEVICE_ID_FILE:-$STATE_DIR/device-id}"
 COMPLETE_FILE="${WEB_SPECTROMETER_COMPLETE_FILE:-$STATE_DIR/firstboot-complete}"
 HOSTNAME_FILE="${WEB_SPECTROMETER_HOSTNAME_FILE:-/etc/hostname}"
 HOSTS_FILE="${WEB_SPECTROMETER_HOSTS_FILE:-/etc/hosts}"
-DEFAULT_HOSTNAME="${WEB_SPECTROMETER_DEFAULT_HOSTNAME:-raspberrypi}"
 SERVICE_NAME="${WEB_SPECTROMETER_SERVICE_NAME:-web-spectrometer.service}"
 FIRSTBOOT_SERVICE_NAME="${WEB_SPECTROMETER_FIRSTBOOT_SERVICE_NAME:-web-spectrometer-firstboot.service}"
 SYSTEMCTL="${WEB_SPECTROMETER_SYSTEMCTL:-systemctl}"
@@ -146,28 +145,6 @@ read_hostname() {
   return 0
 }
 
-should_use_generated_hostname() {
-  local current="$1"
-
-  if [ "${WEB_SPECTROMETER_FORCE_GENERATED_HOSTNAME:-0}" = "1" ]; then
-    return 0
-  fi
-  if [ "${WEB_SPECTROMETER_RESPECT_CUSTOM_HOSTNAME:-1}" = "0" ]; then
-    return 0
-  fi
-
-  case "$current" in
-    ""|"$DEFAULT_HOSTNAME"|"raspberrypi"|"web-spectrometer-pi-os"|"web-spectrometer-pi-os-lite"|"spectrometer")
-      return 0
-      ;;
-    spectrometer-[a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9][a-f0-9])
-      return 0
-      ;;
-  esac
-
-  return 1
-}
-
 ensure_config() {
   local token
   local pairing_required="${WEB_SPECTROMETER_PAIRING_REQUIRED:-1}"
@@ -297,7 +274,6 @@ main() {
   local device_id
   local hostname
   local current_hostname
-  local generated_hostname
   local token
   local hostname_changed=0
   local boot_config_changed=0
@@ -307,12 +283,13 @@ main() {
     device_id="$(random_hex_id)"
   fi
   printf '%s\n' "$device_id" > "$DEVICE_ID_FILE"
-  generated_hostname="spectrometer-$device_id"
   current_hostname="$(read_hostname)"
-  if should_use_generated_hostname "$current_hostname"; then
-    hostname="$generated_hostname"
-  else
-    hostname="$current_hostname"
+  hostname="$current_hostname"
+  if [ -z "$hostname" ]; then
+    hostname="$(hostname 2>/dev/null | tr -d ' \t\r\n' || true)"
+  fi
+  if [ -z "$hostname" ]; then
+    hostname="raspberrypi"
   fi
 
   ensure_config

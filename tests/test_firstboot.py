@@ -49,11 +49,18 @@ def run_firstboot(
     return hostname_file, boot_dir / "spectrometer-setup.txt", config_dir / "config.json"
 
 
-def test_firstboot_generates_unique_hostname_for_default_hostname(tmp_path: Path) -> None:
+def test_firstboot_keeps_existing_hostname(tmp_path: Path) -> None:
     hostname_file, setup_file, _ = run_firstboot(tmp_path, "raspberrypi")
 
-    assert hostname_file.read_text(encoding="utf-8").strip() == "spectrometer-abc123"
-    assert "API URL: http://spectrometer-abc123.local:8765/" in setup_file.read_text(encoding="utf-8")
+    assert hostname_file.read_text(encoding="utf-8").strip() == "raspberrypi"
+    assert "API URL: http://raspberrypi.local:8765/" in setup_file.read_text(encoding="utf-8")
+
+
+def test_firstboot_keeps_spectrometer_hostname(tmp_path: Path) -> None:
+    hostname_file, setup_file, _ = run_firstboot(tmp_path, "spectrometer")
+
+    assert hostname_file.read_text(encoding="utf-8").strip() == "spectrometer"
+    assert "API URL: http://spectrometer.local:8765/" in setup_file.read_text(encoding="utf-8")
 
 
 def test_firstboot_keeps_imager_custom_hostname(tmp_path: Path) -> None:

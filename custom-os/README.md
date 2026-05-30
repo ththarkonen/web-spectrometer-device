@@ -18,15 +18,15 @@ This directory packages the Web Spectrometer device API service into a headless 
 The image installs `web-spectrometer-firstboot.service`. On first boot it:
 
 - creates `/etc/web-spectrometer/device-id`,
-- sets a generated hostname only when Imager did not set a custom hostname,
+- keeps the hostname configured by Raspberry Pi Imager,
 - creates `/etc/web-spectrometer/config.json` in pairing-required mode if missing,
 - writes `/boot/firmware/spectrometer-setup.txt` or `/boot/spectrometer-setup.txt`,
 - appends the camera LED boot setting to `config.txt`,
 - enables and starts `web-spectrometer.service`,
 - disables itself after successful provisioning,
-- reboots once when hostname or boot config changed.
+- reboots once when the boot config changed.
 
-The generated setup file contains the API URL and states that the access code is set during first API pairing. It does not contain a token in the default pairing flow.
+The setup file contains the API URL and states that the access code is set during first API pairing. It does not contain a token in the default pairing flow.
 
 ## Build Command
 
@@ -40,10 +40,12 @@ sudo apt install -y git rsync python3 xz-utils qemu-user-binfmt qemu-user-static
 From the device repository root:
 
 ```bash
-IMAGE_VERSION=1.0.0 custom-os/build-image.sh
+custom-os/build-image.sh
 ```
 
-Supported environment overrides:
+The default output name includes the current date. For a versioned release, set `IMAGE_VERSION`, for example `IMAGE_VERSION=1.0.0 custom-os/build-image.sh`.
+
+Optional environment overrides:
 
 ```bash
 PI_GEN_DIR=/path/to/pi-gen IMAGE_VERSION=1.0.0 custom-os/build-image.sh

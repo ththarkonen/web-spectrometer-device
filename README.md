@@ -18,6 +18,8 @@ The recommended installation path is the release manifest for Raspberry Pi Image
 
 Detailed installation instructions are in [docs/raspberry-pi-install.md](docs/raspberry-pi-install.md).
 
+The desktop UI is released separately from the `web-spectrometer-ui` repository. End users install the Pi image from this repository and the UI installer from the UI repository.
+
 The device service:
 
 - captures full raw `RGB888` camera frames,
@@ -27,7 +29,7 @@ The device service:
 - can be installed manually as a systemd service,
 - can be built into a custom Raspberry Pi OS image.
 
-The browser UI is maintained separately. UI clients use this service as an API device target and rely on the contract in [docs/api.md](docs/api.md) or the live FastAPI OpenAPI document at `/openapi.json`.
+The browser/desktop UI is maintained separately. UI clients use this service as an API device target and rely on the contract in [docs/api.md](docs/api.md) or the live FastAPI OpenAPI document at `/openapi.json`.
 
 ## Repository Layout
 
@@ -88,8 +90,10 @@ journalctl -u web-spectrometer.service -f
 Build wrapper:
 
 ```bash
-IMAGE_VERSION=1.0.0 custom-os/build-image.sh
+custom-os/build-image.sh
 ```
+
+By default this creates a dated image name. Set `IMAGE_VERSION=1.0.0` only when preparing a specifically versioned release artifact.
 
 Release artifacts:
 
