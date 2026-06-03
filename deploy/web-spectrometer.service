@@ -2,6 +2,7 @@
 Description=Web Spectrometer device API
 After=network-online.target
 Wants=network-online.target
+ConditionPathExists=/etc/web-spectrometer/config.json
 
 [Service]
 Type=simple

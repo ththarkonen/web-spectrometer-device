@@ -6,7 +6,7 @@ The recommended installation path is the custom Raspberry Pi OS image. Manual in
 
 Requirements:
 
-- Raspberry Pi Zero 2 W or another Raspberry Pi with camera support.
+- Raspberry Pi Zero W, Raspberry Pi Zero 2 W, or another Raspberry Pi with camera support.
 - Raspberry Pi camera connected to the Pi.
 - microSD card.
 - Raspberry Pi Imager on the computer used to flash the card.
@@ -87,7 +87,7 @@ Install system packages:
 
 ```bash
 sudo apt update
-sudo apt install -y --no-install-recommends git python3-venv python3-pip python3-picamera2 rsync avahi-daemon
+sudo apt install -y --no-install-recommends git python3-fastapi python3-numpy python3-picamera2 python3-uvicorn python3-venv python3-websockets rsync avahi-daemon
 ```
 
 Clone the repository:
@@ -112,6 +112,8 @@ The installer:
 - enables and starts the service,
 - writes the camera LED boot setting,
 - serves the device API from the Pi.
+
+The installer uses Raspberry Pi OS Python packages by default. This avoids pip wheels that can contain CPU instructions unsupported by Raspberry Pi Zero W.
 
 API base URL:
 

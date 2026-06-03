@@ -39,4 +39,4 @@ python3 custom-os/imager/create-imager-manifest.py \
 
 If `--image-url` is omitted, the manifest points at the local image with `file://`. That form is intended for local testing and is not suitable for public releases.
 
-Default device tags are `pi3-32bit`, `pi4-32bit`, and `pi5-32bit`; `pi3-32bit` covers Raspberry Pi Zero 2 W in Imager filtering.
+Default device tags are `pi1-32bit`, `pi2-32bit`, `pi3-32bit`, `pi4-32bit`, and `pi5-32bit`. `pi1-32bit` covers Raspberry Pi 1 and Zero-class boards, and `pi3-32bit` covers Raspberry Pi Zero 2 W in Imager filtering.

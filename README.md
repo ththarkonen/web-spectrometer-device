@@ -71,11 +71,11 @@ Manual installation for development or SSH-based upgrades:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-venv python3-pip python3-picamera2 rsync avahi-daemon
+sudo apt install -y python3-fastapi python3-numpy python3-picamera2 python3-uvicorn python3-venv python3-websockets rsync avahi-daemon
 SERVICE_USER="$USER" bash deploy/install-pi-service.sh
 ```
 
-The installer copies this repository to `/opt/web-spectrometer`, creates or migrates `/etc/web-spectrometer/config.json`, installs `web-spectrometer.service`, and disables any previous `bluetooth-spectrometer.service`.
+The installer copies this repository to `/opt/web-spectrometer`, creates or migrates `/etc/web-spectrometer/config.json`, installs `web-spectrometer.service`, and disables any previous `bluetooth-spectrometer.service`. It uses Raspberry Pi OS Python packages by default so the binary dependencies remain compatible with Raspberry Pi Zero W.
 
 Service commands:
 

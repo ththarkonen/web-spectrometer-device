@@ -10,9 +10,25 @@ from pathlib import Path
 
 
 CHUNK_SIZE = 1024 * 1024
-DEFAULT_DEVICES = ("pi3-32bit", "pi4-32bit", "pi5-32bit")
+DEFAULT_DEVICES = ("pi1-32bit", "pi2-32bit", "pi3-32bit", "pi4-32bit", "pi5-32bit")
 
 DEVICE_PROFILES = [
+    {
+        "name": "Raspberry Pi 1 / Zero / Zero W",
+        "description": "32-bit Raspberry Pi OS for Raspberry Pi 1 and Zero-class boards",
+        "tags": ["pi1-32bit"],
+        "matching_type": "exclusive",
+        "architecture": "armhf",
+        "capabilities": ["i2c", "spi", "serial", "usb_otg"],
+    },
+    {
+        "name": "Raspberry Pi 2",
+        "description": "32-bit Raspberry Pi OS for Raspberry Pi 2-class boards",
+        "tags": ["pi2-32bit"],
+        "matching_type": "exclusive",
+        "architecture": "armhf",
+        "capabilities": ["i2c", "spi", "serial"],
+    },
     {
         "name": "Raspberry Pi Zero 2 W / 3",
         "description": "32-bit Raspberry Pi OS for Raspberry Pi Zero 2 W and Raspberry Pi 3-class boards",

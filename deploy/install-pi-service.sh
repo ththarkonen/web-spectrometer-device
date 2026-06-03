@@ -38,6 +38,20 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ "${INSTALL_SYSTEM_DEPS:-1}" = "1" ]; then
+  sudo apt-get update
+  sudo apt-get install -y \
+    avahi-daemon \
+    python3-fastapi \
+    python3-numpy \
+    python3-picamera2 \
+    python3-pip \
+    python3-uvicorn \
+    python3-venv \
+    python3-websockets \
+    rsync
+fi
+
 sudo mkdir -p "$APP_DIR" "$CONFIG_DIR"
 sudo rsync -a --delete --delete-excluded \
   --exclude ".venv" \
@@ -51,8 +65,10 @@ sudo rsync -a --delete --delete-excluded \
   ./ "$APP_DIR/"
 
 sudo python3 -m venv --system-site-packages "$APP_DIR/.venv"
-sudo "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip
-sudo "$APP_DIR/.venv/bin/python" -m pip install -r "$APP_DIR/requirements-pi.txt"
+if [ "${INSTALL_PIP_DEPS:-0}" = "1" ]; then
+  sudo "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip
+  sudo "$APP_DIR/.venv/bin/python" -m pip install -r "$APP_DIR/requirements-pi.txt"
+fi
 
 if [ ! -f "$CONFIG_DIR/config.json" ] && [ -f "$LEGACY_CONFIG_DIR/config.json" ]; then
   sudo cp "$LEGACY_CONFIG_DIR/config.json" "$CONFIG_DIR/config.json"
